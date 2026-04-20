@@ -1,0 +1,12 @@
+{
+  "name": "downloadyes",
+  "version": "1.0.0",
+  "description": "A sleek black & white YouTube downloader",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["youtube", "downloader"],
+  "license": "MIT"
+}
