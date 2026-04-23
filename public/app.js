@@ -80,8 +80,7 @@
     const card = document.createElement('a');
     card.className = 'format-card';
     card.href = format.downloadUrl || '#';
-    card.target = '_blank';
-    card.rel = 'noopener noreferrer';
+    card.setAttribute('download', '');
     card.setAttribute('title', `Download ${format.label}`);
 
     const meta = [];
