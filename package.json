@@ -1,11 +1,19 @@
 {
   "name": "downloadyes",
-  "version": "1.0.0",
-  "description": "A sleek black & white YouTube downloader",
+  "version": "2.0.0",
+  "description": "A sleek black & white YouTube downloader — pure JS, works anywhere",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "ffmpeg-static": "^5.2.0",
+    "youtubei.js": "^12.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "keywords": ["youtube", "downloader"],
   "license": "MIT"
