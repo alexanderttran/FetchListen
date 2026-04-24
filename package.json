@@ -10,11 +10,14 @@
   "dependencies": {
     "express": "^4.21.0",
     "ffmpeg-static": "^5.2.0",
-    "youtubei.js": "^12.2.0"
+    "youtube-dl-exec": "^3.1.5"
   },
   "engines": {
     "node": ">=18.0.0"
   },
-  "keywords": ["youtube", "downloader"],
+  "keywords": [
+    "youtube",
+    "downloader"
+  ],
   "license": "MIT"
 }
