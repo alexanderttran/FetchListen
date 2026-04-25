@@ -5,12 +5,14 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "build": "mkdir -p node_modules/youtube-dl-exec/bin && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o node_modules/youtube-dl-exec/bin/yt-dlp && chmod +x node_modules/youtube-dl-exec/bin/yt-dlp"
   },
   "dependencies": {
     "express": "^4.21.0",
     "ffmpeg-static": "^5.2.0",
-    "youtube-dl-exec": "^3.1.5"
+    "youtube-dl-exec": "^3.1.5",
+    "youtubei.js": "^17.0.1"
   },
   "engines": {
     "node": ">=18.0.0"
