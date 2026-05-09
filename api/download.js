@@ -1,6 +1,6 @@
 /* ============================================================
    /api/download — Vercel Serverless Function
-   Streams video/audio content to the client.
+   Streams MP3 audio to the client.
    ============================================================ */
 
 const { getDownloadStream } = require('../lib/youtube');
@@ -21,18 +21,16 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  try {
-    const options = {};
+  if (req.query.type !== 'mp3') {
+    res.status(400).json({ error: 'Only MP3 downloads are supported' });
+    return;
+  }
 
-    if (req.query.type === 'mp3') {
-      options.type = 'mp3';
-      options.quality = req.query.quality || '192k';
-    } else if (req.query.itag) {
-      options.itag = req.query.itag;
-    } else {
-      res.status(400).json({ error: 'Missing itag or type parameter' });
-      return;
-    }
+  try {
+    const options = {
+      type: 'mp3',
+      quality: req.query.quality || '192k',
+    };
 
     const { stream, contentType, filename } = await getDownloadStream(videoId, options);
 

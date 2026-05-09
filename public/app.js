@@ -23,7 +23,6 @@
   const videoTitle = document.getElementById('video-title');
   const videoChannel = document.getElementById('video-channel');
   const audioCards = document.getElementById('audio-cards');
-  const videoCards = document.getElementById('video-cards');
 
   // ── State ────────────────────────────────────────────────
   let currentVideoId = '';
@@ -126,22 +125,13 @@
 
     // Clear old cards
     audioCards.innerHTML = '';
-    videoCards.innerHTML = '';
 
-    // Audio formats
+    // Audio (MP3) formats
     if (data.audioFormats && data.audioFormats.length) {
       data.audioFormats.forEach(f => audioCards.appendChild(createFormatCard(f)));
       document.getElementById('audio-formats').classList.remove('hidden');
     } else {
       document.getElementById('audio-formats').classList.add('hidden');
-    }
-
-    // Video formats
-    if (data.videoFormats && data.videoFormats.length) {
-      data.videoFormats.forEach(f => videoCards.appendChild(createFormatCard(f)));
-      document.getElementById('video-formats').classList.remove('hidden');
-    } else {
-      document.getElementById('video-formats').classList.add('hidden');
     }
 
     heroSection.classList.add('hidden');
