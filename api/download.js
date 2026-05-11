@@ -1,40 +1,54 @@
 /* ============================================================
    /api/download — Vercel Serverless Function
-   Streams video/audio content to the client.
+   Streams MP3 audio to the client.
+   Accepts POST with { videoId, quality, cookies } in body.
    ============================================================ */
 
 const { getDownloadStream } = require('../lib/youtube');
 
 module.exports = async function handler(req, res) {
-  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
     res.status(204).end();
     return;
   }
 
-  const videoId = req.query.v;
+  // Support both POST (with cookies) and GET (env-var-only)
+  let videoId, quality, cookies;
+  if (req.method === 'POST') {
+    let body = req.body;
+    if (!body || typeof body !== 'object') {
+      try {
+        const raw = await new Promise((resolve, reject) => {
+          let data = '';
+          req.on('data', chunk => (data += chunk));
+          req.on('end', () => resolve(data));
+          req.on('error', reject);
+        });
+        body = raw ? JSON.parse(raw) : {};
+      } catch {
+        body = {};
+      }
+    }
+    videoId = body.videoId;
+    quality = body.quality || '192k';
+    cookies = body.cookies || null;
+  } else {
+    videoId = req.query.v;
+    quality = req.query.quality || '192k';
+  }
+
   if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
     res.status(400).json({ error: 'Invalid video ID' });
     return;
   }
 
   try {
-    const options = {};
-
-    if (req.query.type === 'mp3') {
-      options.type = 'mp3';
-      options.quality = req.query.quality || '192k';
-    } else if (req.query.itag) {
-      options.itag = req.query.itag;
-    } else {
-      res.status(400).json({ error: 'Missing itag or type parameter' });
-      return;
-    }
-
-    const { stream, contentType, filename } = await getDownloadStream(videoId, options);
+    const options = { type: 'mp3', quality };
+    const { stream, contentType, filename } = await getDownloadStream(videoId, options, cookies);
 
     res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -51,7 +65,6 @@ module.exports = async function handler(req, res) {
       }
     });
 
-    // Clean up if client disconnects
     res.on('close', () => {
       if (stream.destroy) stream.destroy();
     });

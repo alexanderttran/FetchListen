@@ -11,18 +11,20 @@ const { getVideoInfo, getDownloadStream } = require('./lib/youtube');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ── Serve Static Files from public/ ───────────────────────
+// ── Middleware ────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json());
 
 // ── API: Get Video Info ───────────────────────────────────
-app.get('/api/info', async (req, res) => {
-  const videoId = req.query.v;
+// POST { videoId, cookies? }
+app.post('/api/info', async (req, res) => {
+  const { videoId, cookies } = req.body || {};
   if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
     return res.status(400).json({ error: 'Invalid video ID' });
   }
 
   try {
-    const data = await getVideoInfo(videoId);
+    const data = await getVideoInfo(videoId, cookies || null);
     res.json(data);
   } catch (err) {
     console.error('[/api/info] Error:', err.message);
@@ -30,26 +32,17 @@ app.get('/api/info', async (req, res) => {
   }
 });
 
-// ── API: Download Stream ──────────────────────────────────
-app.get('/api/download', async (req, res) => {
-  const videoId = req.query.v;
+// ── API: Download MP3 ─────────────────────────────────────
+// POST { videoId, quality?, cookies? }
+app.post('/api/download', async (req, res) => {
+  const { videoId, quality, cookies } = req.body || {};
   if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
     return res.status(400).json({ error: 'Invalid video ID' });
   }
 
   try {
-    const options = {};
-
-    if (req.query.type === 'mp3') {
-      options.type = 'mp3';
-      options.quality = req.query.quality || '192k';
-    } else if (req.query.itag) {
-      options.itag = req.query.itag;
-    } else {
-      return res.status(400).json({ error: 'Missing itag or type parameter' });
-    }
-
-    const { stream, contentType, filename } = await getDownloadStream(videoId, options);
+    const options = { type: 'mp3', quality: quality || '192k' };
+    const { stream, contentType, filename } = await getDownloadStream(videoId, options, cookies || null);
 
     res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -58,9 +51,7 @@ app.get('/api/download', async (req, res) => {
 
     stream.on('error', (err) => {
       console.error('[/api/download] Stream error:', err.message);
-      if (!res.headersSent) {
-        res.status(500).json({ error: 'Download stream failed' });
-      }
+      if (!res.headersSent) res.status(500).json({ error: 'Download stream failed' });
     });
 
     res.on('close', () => {
@@ -68,9 +59,7 @@ app.get('/api/download', async (req, res) => {
     });
   } catch (err) {
     console.error('[/api/download] Error:', err.message);
-    if (!res.headersSent) {
-      res.status(500).json({ error: err.message || 'Download failed' });
-    }
+    if (!res.headersSent) res.status(500).json({ error: err.message || 'Download failed' });
   }
 });
 

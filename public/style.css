@@ -669,3 +669,204 @@ body {
     display: none;
   }
 }
+
+/* ── Cookies Bar ──────────────────────────────────────────── */
+.cookies-bar {
+  text-align: center;
+  margin-top: 10px;
+}
+
+.cookies-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font);
+  font-size: 0.72rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-pill);
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.cookies-toggle:hover {
+  color: var(--text-secondary);
+  background: var(--accent-dim);
+}
+
+.cookies-toggle.has-cookies {
+  color: #6ee7b7;
+}
+
+.cookies-toggle.has-cookies:hover {
+  background: rgba(110, 231, 183, 0.08);
+}
+
+/* ── Modal Backdrop ───────────────────────────────────────── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: fade-in-modal 0.18s ease;
+}
+
+@keyframes fade-in-modal {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.modal {
+  background: #111;
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius-xl);
+  padding: 28px;
+  width: 100%;
+  max-width: 540px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+  animation: slide-up-modal 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slide-up-modal {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.modal-title {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.modal-close:hover {
+  color: var(--text-primary);
+  background: var(--accent-dim);
+}
+
+.modal-desc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.modal-desc code {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.78rem;
+  font-family: 'Courier New', monospace;
+}
+
+.modal-desc strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.cookies-textarea {
+  width: 100%;
+  height: 160px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  color: var(--text-primary);
+  font-family: 'Courier New', monospace;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  transition: border-color var(--transition-fast);
+  margin-bottom: 16px;
+}
+
+.cookies-textarea:focus {
+  border-color: var(--border-active);
+}
+
+.cookies-textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.modal-btn {
+  padding: 9px 20px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: none;
+}
+
+.modal-btn-clear {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.modal-btn-clear:hover {
+  color: #ff6b6b;
+  border-color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.08);
+}
+
+.modal-btn-save {
+  background: #fff;
+  color: #000;
+}
+
+.modal-btn-save:hover {
+  background: #e0e0e0;
+  transform: translateY(-1px);
+}
+
+/* ── Downloading State ────────────────────────────────────── */
+.format-card.downloading {
+  opacity: 0.6;
+  cursor: wait;
+  pointer-events: none;
+}
+
+.format-card.downloading .format-download-icon {
+  animation: bounce-down 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes bounce-down {
+  from { transform: translateY(0); }
+  to   { transform: translateY(4px); }
+}
+

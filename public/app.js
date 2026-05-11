@@ -6,27 +6,85 @@
   'use strict';
 
   // ── DOM References ───────────────────────────────────────
-  const urlInput = document.getElementById('url-input');
-  const fetchBtn = document.getElementById('fetch-btn');
-  const inputHint = document.getElementById('input-hint');
-  const inputArea = document.getElementById('input-area');
-  const heroSection = document.getElementById('hero-section');
-  const loadingSection = document.getElementById('loading-section');
-  const resultsSection = document.getElementById('results-section');
-  const errorSection = document.getElementById('error-section');
-  const errorText = document.getElementById('error-text');
-  const retryBtn = document.getElementById('retry-btn');
-  const backBtn = document.getElementById('back-btn');
+  const urlInput        = document.getElementById('url-input');
+  const fetchBtn        = document.getElementById('fetch-btn');
+  const inputHint       = document.getElementById('input-hint');
+  const heroSection     = document.getElementById('hero-section');
+  const loadingSection  = document.getElementById('loading-section');
+  const resultsSection  = document.getElementById('results-section');
+  const errorSection    = document.getElementById('error-section');
+  const errorText       = document.getElementById('error-text');
+  const retryBtn        = document.getElementById('retry-btn');
+  const backBtn         = document.getElementById('back-btn');
 
-  const videoThumbnail = document.getElementById('video-thumbnail');
-  const videoDuration = document.getElementById('video-duration');
-  const videoTitle = document.getElementById('video-title');
-  const videoChannel = document.getElementById('video-channel');
-  const audioCards = document.getElementById('audio-cards');
-  const videoCards = document.getElementById('video-cards');
+  const videoThumbnail  = document.getElementById('video-thumbnail');
+  const videoDuration   = document.getElementById('video-duration');
+  const videoTitle      = document.getElementById('video-title');
+  const videoChannel    = document.getElementById('video-channel');
+  const audioCards      = document.getElementById('audio-cards');
+
+  // Cookies UI
+  const cookiesToggle      = document.getElementById('cookies-toggle');
+  const cookiesToggleLabel = document.getElementById('cookies-toggle-label');
+  const cookiesModal       = document.getElementById('cookies-modal');
+  const cookiesModalClose  = document.getElementById('cookies-modal-close');
+  const cookiesTextarea    = document.getElementById('cookies-textarea');
+  const cookiesSaveBtn     = document.getElementById('cookies-save-btn');
+  const cookiesClearBtn    = document.getElementById('cookies-clear-btn');
 
   // ── State ────────────────────────────────────────────────
-  let currentVideoId = '';
+  let currentVideoId    = '';
+  let currentVideoTitle = '';
+
+  // ── Cookies Management ───────────────────────────────────
+  const COOKIES_KEY = 'yt_cookies';
+
+  function getCookies() {
+    return localStorage.getItem(COOKIES_KEY) || null;
+  }
+
+  function updateCookiesToggle() {
+    const hasCookies = !!getCookies();
+    cookiesToggleLabel.textContent = hasCookies
+      ? '✓ Cookies saved — click to update'
+      : 'Add cookies to bypass bot detection';
+    cookiesToggle.classList.toggle('has-cookies', hasCookies);
+  }
+
+  function openCookiesModal() {
+    cookiesTextarea.value = getCookies() || '';
+    cookiesModal.classList.remove('hidden');
+    cookiesTextarea.focus();
+  }
+
+  function closeCookiesModal() {
+    cookiesModal.classList.add('hidden');
+  }
+
+  cookiesToggle.addEventListener('click', openCookiesModal);
+  cookiesModalClose.addEventListener('click', closeCookiesModal);
+
+  cookiesModal.addEventListener('click', (e) => {
+    if (e.target === cookiesModal) closeCookiesModal();
+  });
+
+  cookiesSaveBtn.addEventListener('click', () => {
+    const val = cookiesTextarea.value.trim();
+    if (val) {
+      localStorage.setItem(COOKIES_KEY, val);
+    } else {
+      localStorage.removeItem(COOKIES_KEY);
+    }
+    updateCookiesToggle();
+    closeCookiesModal();
+  });
+
+  cookiesClearBtn.addEventListener('click', () => {
+    cookiesTextarea.value = '';
+    localStorage.removeItem(COOKIES_KEY);
+    updateCookiesToggle();
+    closeCookiesModal();
+  });
 
   // ── YouTube URL Validation ───────────────────────────────
   function extractVideoId(url) {
@@ -66,27 +124,57 @@
     return `${m}:${s.toString().padStart(2,'0')}`;
   }
 
-  // ── Format File Size ─────────────────────────────────────
-  function formatSize(bytes) {
-    if (!bytes) return '';
-    if (bytes > 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
-    if (bytes > 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
-    if (bytes > 1024) return (bytes / 1024).toFixed(0) + ' KB';
-    return bytes + ' B';
+  // ── Blob Download Helper ─────────────────────────────────
+  async function triggerBlobDownload(videoId, quality, title) {
+    const btn = document.querySelector(`[data-quality="${quality}"]`);
+    if (btn) {
+      btn.classList.add('downloading');
+      btn.querySelector('.format-quality').textContent = 'Downloading…';
+    }
+
+    try {
+      const resp = await fetch('/api/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoId, quality, cookies: getCookies() }),
+      });
+
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => ({}));
+        throw new Error(body.error || `Server error (${resp.status})`);
+      }
+
+      const blob = await resp.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `${title || 'audio'} (${quality}).mp3`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) {
+      alert(`Download failed: ${err.message}`);
+    } finally {
+      if (btn) {
+        btn.classList.remove('downloading');
+        btn.querySelector('.format-quality').textContent = btn.dataset.label;
+      }
+    }
   }
 
-  // ── Create Format Card HTML ──────────────────────────────
-  function createFormatCard(format) {
-    const card = document.createElement('a');
+  // ── Create Format Card ───────────────────────────────────
+  function createFormatCard(format, videoId, videoTitle) {
+    const card = document.createElement('button');
     card.className = 'format-card';
-    card.href = format.downloadUrl || '#';
-    card.setAttribute('download', '');
+    card.type = 'button';
     card.setAttribute('title', `Download ${format.label}`);
+    card.dataset.quality = format.quality;
+    card.dataset.label   = format.label;
 
     const meta = [];
     if (format.bitrate) meta.push(format.bitrate);
-    if (format.size) meta.push(format.size);
-    if (format.codec) meta.push(format.codec);
+    if (format.codec)   meta.push(format.codec);
 
     card.innerHTML = `
       <div class="format-card-left">
@@ -102,12 +190,21 @@
         <line x1="12" y1="15" x2="12" y2="3"/>
       </svg>
     `;
+
+    card.addEventListener('click', () => {
+      triggerBlobDownload(videoId, format.quality, videoTitle);
+    });
+
     return card;
   }
 
   // ── Fetch Video Info via Backend API ─────────────────────
   async function fetchVideoInfo(videoId) {
-    const resp = await fetch(`/api/info?v=${encodeURIComponent(videoId)}`);
+    const resp = await fetch('/api/info', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ videoId, cookies: getCookies() }),
+    });
     if (!resp.ok) {
       const body = await resp.json().catch(() => ({}));
       throw new Error(body.error || `Server error (${resp.status})`);
@@ -117,31 +214,20 @@
 
   // ── Render Results ───────────────────────────────────────
   function renderResults(data) {
-    // Video preview
-    videoThumbnail.src = data.thumbnail || `https://i.ytimg.com/vi/${currentVideoId}/hqdefault.jpg`;
-    videoThumbnail.alt = data.title || 'Video thumbnail';
+    videoThumbnail.src        = data.thumbnail || `https://i.ytimg.com/vi/${currentVideoId}/hqdefault.jpg`;
+    videoThumbnail.alt        = data.title || 'Video thumbnail';
     videoDuration.textContent = formatDuration(data.duration);
-    videoTitle.textContent = data.title || 'Untitled Video';
-    videoChannel.textContent = data.channel || '';
+    videoTitle.textContent    = data.title || 'Untitled Video';
+    videoChannel.textContent  = data.channel || '';
+    currentVideoTitle         = data.title || 'audio';
 
-    // Clear old cards
     audioCards.innerHTML = '';
-    videoCards.innerHTML = '';
 
-    // Audio formats
     if (data.audioFormats && data.audioFormats.length) {
-      data.audioFormats.forEach(f => audioCards.appendChild(createFormatCard(f)));
+      data.audioFormats.forEach(f => audioCards.appendChild(createFormatCard(f, currentVideoId, currentVideoTitle)));
       document.getElementById('audio-formats').classList.remove('hidden');
     } else {
       document.getElementById('audio-formats').classList.add('hidden');
-    }
-
-    // Video formats
-    if (data.videoFormats && data.videoFormats.length) {
-      data.videoFormats.forEach(f => videoCards.appendChild(createFormatCard(f)));
-      document.getElementById('video-formats').classList.remove('hidden');
-    } else {
-      document.getElementById('video-formats').classList.add('hidden');
     }
 
     heroSection.classList.add('hidden');
@@ -202,9 +288,14 @@
     }
   });
 
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeCookiesModal();
+  });
+
   retryBtn.addEventListener('click', showHome);
   backBtn.addEventListener('click', showHome);
 
-  // ── Focus input on load ──────────────────────────────────
+  // ── Init ─────────────────────────────────────────────────
+  updateCookiesToggle();
   urlInput.focus();
 })();
