@@ -43,9 +43,9 @@
     <main class="main-content">
       <section class="hero" id="hero-section">
         <h1 class="hero-title">
-          Download <span class="hero-highlight">anything</span><br/>from YouTube.
+          Download <span class="hero-highlight">MP3s</span><br/>from YouTube.
         </h1>
-        <p class="hero-subtitle">Paste a link. Pick a format. Done.</p>
+        <p class="hero-subtitle">Paste a link. Pick your quality. Done.</p>
 
         <!-- URL Input Area -->
         <div class="input-area" id="input-area">
@@ -71,6 +71,12 @@
             </button>
           </div>
           <p class="input-hint" id="input-hint">Supports youtube.com and youtu.be links</p>
+          <div class="cookies-bar">
+            <button class="cookies-toggle" id="cookies-toggle" type="button">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span id="cookies-toggle-label">Add cookies to bypass bot detection</span>
+            </button>
+          </div>
         </div>
       </section>
 
@@ -96,33 +102,17 @@
           </div>
         </div>
 
-        <!-- Format Sections -->
+        <!-- Format Section — MP3 only -->
         <div class="formats-container" id="formats-container">
-          <!-- Audio Formats -->
           <div class="format-group" id="audio-formats">
             <div class="format-group-header">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M9 18V5l12-2v13"/>
                 <circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
               </svg>
-              <h3>Audio</h3>
+              <h3>MP3</h3>
             </div>
             <div class="format-cards" id="audio-cards"></div>
-          </div>
-
-          <!-- Video Formats -->
-          <div class="format-group" id="video-formats">
-            <div class="format-group-header">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
-                <line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/>
-                <line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/>
-                <line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/>
-                <line x1="17" y1="7" x2="22" y2="7"/>
-              </svg>
-              <h3>Video</h3>
-            </div>
-            <div class="format-cards" id="video-cards"></div>
           </div>
         </div>
 
@@ -151,6 +141,30 @@
     <footer class="site-footer" id="site-footer">
       <p>&copy; 2026 DownloadYes &mdash; For personal use only.</p>
     </footer>
+  </div>
+
+  <!-- Cookies Modal -->
+  <div class="modal-backdrop hidden" id="cookies-modal" role="dialog" aria-modal="true" aria-labelledby="cookies-modal-title">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="cookies-modal-title">YouTube Cookies</h2>
+        <button class="modal-close" id="cookies-modal-close" type="button" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <p class="modal-desc">Paste your Netscape-format <code>cookies.txt</code> below. Export it from YouTube while logged in using a browser extension like <strong>Get cookies.txt LOCALLY</strong>. Cookies are saved in your browser only and never sent anywhere except this server.</p>
+      <textarea
+        id="cookies-textarea"
+        class="cookies-textarea"
+        placeholder="# Netscape HTTP Cookie File&#10;.youtube.com TRUE / FALSE 0 VISITOR_INFO1_LIVE xxx&#10;..."
+        spellcheck="false"
+        autocomplete="off"
+      ></textarea>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn-clear" id="cookies-clear-btn" type="button">Clear</button>
+        <button class="modal-btn modal-btn-save" id="cookies-save-btn" type="button">Save Cookies</button>
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>
