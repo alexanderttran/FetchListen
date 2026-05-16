@@ -3,7 +3,7 @@
   "functions": {
     "api/*.js": {
       "maxDuration": 60,
-      "includeFiles": "{node_modules/ffmpeg-static/**,node_modules/youtube-dl-exec/bin/**}"
+      "includeFiles": "node_modules/ffmpeg-static/**"
     }
   }
 }
