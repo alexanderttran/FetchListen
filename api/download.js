@@ -39,6 +39,7 @@ module.exports = async function handler(req, res) {
   } else {
     videoId = req.query.v;
     quality = req.query.quality || '192k';
+    cookies = req.query.cookies || null;
   }
 
   if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {

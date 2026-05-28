@@ -324,7 +324,9 @@
     playerProgressThumb.style.left = '0%';
     
     // Set audio source (using 128k quality for fast buffering)
-    audio.src = `/api/download?v=${currentVideoId}&quality=128k`;
+    const cookiesVal = getCookies();
+    const cookiesParam = cookiesVal ? `&cookies=${encodeURIComponent(cookiesVal)}` : '';
+    audio.src = `/api/download?v=${currentVideoId}&quality=128k${cookiesParam}`;
     
     // Enable play button
     playerBtnPlay.disabled = false;
