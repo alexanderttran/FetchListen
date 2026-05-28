@@ -1,5 +1,5 @@
 /* ============================================================
-   DownloadYes — Express Server (Local Dev)
+   FetchListen — Express Server (Local Dev)
    Works for local development and traditional Node.js hosting.
    On Vercel, the api/ functions + public/ folder are used instead.
    ============================================================ */
@@ -65,7 +65,7 @@ app.post('/api/download', async (req, res) => {
 
 // ── Start Server ──────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`\n  ✦  DownloadYes is running at http://localhost:${PORT}\n`);
+  console.log(`\n  ✦  FetchListen is running at http://localhost:${PORT}\n`);
 });
 
 module.exports = app;
