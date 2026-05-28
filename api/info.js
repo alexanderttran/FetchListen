@@ -45,7 +45,7 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const data = await getVideoInfo(videoId, cookies);
+    const data = await getVideoInfo(videoId, cookies, req);
     res.status(200).json(data);
   } catch (err) {
     console.error('[/api/info] Error:', err.message);

@@ -24,7 +24,7 @@ app.post('/api/info', async (req, res) => {
   }
 
   try {
-    const data = await getVideoInfo(videoId, cookies || null);
+    const data = await getVideoInfo(videoId, cookies || null, req);
     res.json(data);
   } catch (err) {
     console.error('[/api/info] Error:', err.message);

@@ -92,8 +92,11 @@
     const val = cookiesTextarea.value.trim();
     if (val) {
       localStorage.setItem(COOKIES_KEY, val);
+      // Set domain cookie for GET request streaming (prevents URL length overflow)
+      document.cookie = "yt_cookies=" + encodeURIComponent(val) + "; path=/; max-age=31536000; SameSite=Lax";
     } else {
       localStorage.removeItem(COOKIES_KEY);
+      document.cookie = "yt_cookies=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     }
     updateCookiesToggle();
     closeCookiesModal();
@@ -102,6 +105,7 @@
   cookiesClearBtn.addEventListener('click', () => {
     cookiesTextarea.value = '';
     localStorage.removeItem(COOKIES_KEY);
+    document.cookie = "yt_cookies=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     updateCookiesToggle();
     closeCookiesModal();
   });
@@ -324,9 +328,8 @@
     playerProgressThumb.style.left = '0%';
     
     // Set audio source (using 128k quality for fast buffering)
-    const cookiesVal = getCookies();
-    const cookiesParam = cookiesVal ? `&cookies=${encodeURIComponent(cookiesVal)}` : '';
-    audio.src = `/api/download?v=${currentVideoId}&quality=128k${cookiesParam}`;
+    // Note: Cookies are passed automatically via standard HTTP Cookie header
+    audio.src = `/api/download?v=${currentVideoId}&quality=128k`;
     audio.load();
     
     // Enable play button
