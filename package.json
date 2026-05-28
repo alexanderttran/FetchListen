@@ -1,5 +1,5 @@
 {
-  "name": "downloadyes",
+  "name": "fetchlisten",
   "version": "2.0.0",
   "description": "A sleek black & white YouTube downloader — pure JS, works anywhere",
   "main": "server.js",
