@@ -6,7 +6,7 @@
 
 const express = require('express');
 const path = require('path');
-const { getVideoInfo, getDownloadStream } = require('./lib/youtube');
+const { getVideoInfo, getAudioStream, getDownloadStream } = require('./lib/youtube');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,6 +32,32 @@ app.post('/api/info', async (req, res) => {
   }
 });
 
+// ── API: Stream Raw Audio (for player) ───────────────────
+// GET /api/stream?v=<videoId>&c=<base64cookies>
+app.get('/api/stream', async (req, res) => {
+  const videoId = req.query.v;
+  const cookiesB64 = req.query.c || null;
+  let cookies = null;
+  if (cookiesB64) {
+    try {
+      cookies = Buffer.from(cookiesB64, 'base64').toString('utf8');
+    } catch (e) {
+      cookies = null;
+    }
+  }
+
+  if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+    return res.status(400).json({ error: 'Invalid video ID' });
+  }
+
+  try {
+    await getAudioStream(videoId, cookies || null, req, res);
+  } catch (err) {
+    console.error('[/api/stream] Error:', err.message);
+    if (!res.headersSent) res.status(500).json({ error: err.message || 'Stream failed' });
+  }
+});
+
 // ── API: Download MP3 ─────────────────────────────────────
 // Accepts POST (JSON) or GET (Query parameters)
 app.all('/api/download', async (req, res) => {
@@ -40,7 +66,7 @@ app.all('/api/download', async (req, res) => {
     ({ videoId, quality, cookies } = req.body || {});
   } else {
     videoId = req.query.v;
-    quality = req.query.quality || '128k';
+    quality = req.query.quality || '192k';
     cookies = req.query.cookies || null;
   }
 
@@ -50,29 +76,7 @@ app.all('/api/download', async (req, res) => {
 
   try {
     const options = { type: 'mp3', quality: quality || '192k' };
-    const result = await getDownloadStream(videoId, options, cookies || null, req, res);
-
-    if (result && result.handled) {
-      return;
-    }
-
-    res.setHeader('Content-Type', result.contentType);
-    
-    // Only force attachment download for POST requests or explicit download query
-    if (req.method === 'POST' || req.query.download === 'true') {
-      res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(result.filename)}`);
-    }
-
-    result.stream.pipe(res);
-
-    result.stream.on('error', (err) => {
-      console.error('[/api/download] Stream error:', err.message);
-      if (!res.headersSent) res.status(500).json({ error: 'Download stream failed' });
-    });
-
-    res.on('close', () => {
-      if (result.stream && result.stream.destroy) result.stream.destroy();
-    });
+    await getDownloadStream(videoId, options, cookies || null, req, res);
   } catch (err) {
     console.error('[/api/download] Error:', err.message);
     if (!res.headersSent) res.status(500).json({ error: err.message || 'Download failed' });

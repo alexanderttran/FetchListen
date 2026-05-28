@@ -88,12 +88,61 @@
     if (e.target === cookiesModal) closeCookiesModal();
   });
 
+  // Helper to parse Netscape cookie file content and extract only essential YouTube cookies
+  function parseAndMinimizeCookies(cookieInput) {
+    if (!cookieInput) return '';
+    const content = cookieInput.trim();
+    
+    let cookiesMap = {};
+    
+    if (content.startsWith('#') || content.includes('\t')) {
+      const lines = content.split(/\r?\n/);
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        
+        const parts = trimmed.split('\t');
+        if (parts.length >= 7) {
+          const name = parts[5];
+          const value = parts[6];
+          cookiesMap[name] = value;
+        }
+      }
+    } else {
+      // If it's already a semicolon-separated string
+      const pairs = content.split(';');
+      for (const pair of pairs) {
+        const parts = pair.split('=');
+        if (parts.length >= 2) {
+          cookiesMap[parts[0].trim()] = parts.slice(1).join('=').trim();
+        }
+      }
+    }
+    
+    // Keep only essential YouTube cookies
+    const essentialKeys = [
+      'SID', 'HSID', 'SSID', 'APISID', 'SAPISID',
+      '__Secure-3PAPISID', '__Secure-3PSID', '__Secure-3PSIDTS',
+      'LOGIN_INFO', 'PREF', 'VISITOR_INFO1_LIVE'
+    ];
+    
+    const minimized = [];
+    for (const key of essentialKeys) {
+      if (cookiesMap[key]) {
+        minimized.push(`${key}=${cookiesMap[key]}`);
+      }
+    }
+    
+    return minimized.join('; ');
+  }
+
   cookiesSaveBtn.addEventListener('click', () => {
     const val = cookiesTextarea.value.trim();
-    if (val) {
-      localStorage.setItem(COOKIES_KEY, val);
+    const minimized = parseAndMinimizeCookies(val);
+    if (minimized) {
+      localStorage.setItem(COOKIES_KEY, minimized);
       // Set domain cookie for GET request streaming (prevents URL length overflow)
-      document.cookie = "yt_cookies=" + encodeURIComponent(val) + "; path=/; max-age=31536000; SameSite=Lax";
+      document.cookie = "yt_cookies=" + encodeURIComponent(minimized) + "; path=/; max-age=31536000; SameSite=Lax";
     } else {
       localStorage.removeItem(COOKIES_KEY);
       document.cookie = "yt_cookies=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
@@ -327,9 +376,14 @@
     playerProgressFill.style.width = '0%';
     playerProgressThumb.style.left = '0%';
     
-    // Set audio source (using 128k quality for fast buffering)
-    // Note: Cookies are passed automatically via standard HTTP Cookie header
-    audio.src = `/api/download?v=${currentVideoId}&quality=128k`;
+    // Set audio source using /api/stream (raw MP4, no transcoding, instant start)
+    // Cookies are base64-encoded into the URL so audio.src GET request carries auth
+    const cookies = getCookies();
+    let streamUrl = `/api/stream?v=${currentVideoId}`;
+    if (cookies) {
+      streamUrl += `&c=${btoa(unescape(encodeURIComponent(cookies)))}`;
+    }
+    audio.src = streamUrl;
     audio.load();
     
     // Enable play button
