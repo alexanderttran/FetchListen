@@ -50,24 +50,28 @@ app.all('/api/download', async (req, res) => {
 
   try {
     const options = { type: 'mp3', quality: quality || '192k' };
-    const { stream, contentType, filename } = await getDownloadStream(videoId, options, cookies || null);
+    const result = await getDownloadStream(videoId, options, cookies || null, req, res);
 
-    res.setHeader('Content-Type', contentType);
+    if (result && result.handled) {
+      return;
+    }
+
+    res.setHeader('Content-Type', result.contentType);
     
     // Only force attachment download for POST requests or explicit download query
     if (req.method === 'POST' || req.query.download === 'true') {
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(result.filename)}`);
     }
 
-    stream.pipe(res);
+    result.stream.pipe(res);
 
-    stream.on('error', (err) => {
+    result.stream.on('error', (err) => {
       console.error('[/api/download] Stream error:', err.message);
       if (!res.headersSent) res.status(500).json({ error: 'Download stream failed' });
     });
 
     res.on('close', () => {
-      if (stream.destroy) stream.destroy();
+      if (result.stream && result.stream.destroy) result.stream.destroy();
     });
   } catch (err) {
     console.error('[/api/download] Error:', err.message);

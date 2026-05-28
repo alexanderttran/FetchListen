@@ -327,6 +327,7 @@
     const cookiesVal = getCookies();
     const cookiesParam = cookiesVal ? `&cookies=${encodeURIComponent(cookiesVal)}` : '';
     audio.src = `/api/download?v=${currentVideoId}&quality=128k${cookiesParam}`;
+    audio.load();
     
     // Enable play button
     playerBtnPlay.disabled = false;
@@ -350,6 +351,32 @@
   audio.addEventListener('pause', () => {
     iconPlay.classList.remove('hidden');
     iconPause.classList.add('hidden');
+  });
+
+  audio.addEventListener('error', (e) => {
+    console.error('Audio error event:', e);
+    const err = audio.error;
+    let errMsg = 'Unknown audio error';
+    if (err) {
+      switch (err.code) {
+        case err.MEDIA_ERR_ABORTED:
+          errMsg = 'Playback aborted by user';
+          break;
+        case err.MEDIA_ERR_NETWORK:
+          errMsg = 'Network error during audio loading';
+          break;
+        case err.MEDIA_ERR_DECODE:
+          errMsg = 'Audio decoding failed (unsupported format/codec)';
+          break;
+        case err.MEDIA_ERR_SRC_NOT_SUPPORTED:
+          errMsg = 'Audio source format not supported';
+          break;
+      }
+      if (err.message) {
+        errMsg += ` (${err.message})`;
+      }
+    }
+    alert(`Audio playback error: ${errMsg}`);
   });
 
   audio.addEventListener('timeupdate', () => {
