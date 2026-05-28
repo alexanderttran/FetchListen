@@ -51,7 +51,9 @@ module.exports = async function handler(req, res) {
     const { stream, contentType, filename } = await getDownloadStream(videoId, options, cookies);
 
     res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    if (req.method === 'POST' || req.query.download === 'true') {
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    }
     res.setHeader('Transfer-Encoding', 'chunked');
 
     stream.pipe(res);

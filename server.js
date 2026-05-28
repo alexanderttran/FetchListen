@@ -33,9 +33,17 @@ app.post('/api/info', async (req, res) => {
 });
 
 // ── API: Download MP3 ─────────────────────────────────────
-// POST { videoId, quality?, cookies? }
-app.post('/api/download', async (req, res) => {
-  const { videoId, quality, cookies } = req.body || {};
+// Accepts POST (JSON) or GET (Query parameters)
+app.all('/api/download', async (req, res) => {
+  let videoId, quality, cookies;
+  if (req.method === 'POST') {
+    ({ videoId, quality, cookies } = req.body || {});
+  } else {
+    videoId = req.query.v;
+    quality = req.query.quality || '128k';
+    cookies = req.query.cookies || null;
+  }
+
   if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
     return res.status(400).json({ error: 'Invalid video ID' });
   }
@@ -45,7 +53,11 @@ app.post('/api/download', async (req, res) => {
     const { stream, contentType, filename } = await getDownloadStream(videoId, options, cookies || null);
 
     res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    
+    // Only force attachment download for POST requests or explicit download query
+    if (req.method === 'POST' || req.query.download === 'true') {
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    }
 
     stream.pipe(res);
 

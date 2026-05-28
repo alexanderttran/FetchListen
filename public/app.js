@@ -23,6 +23,21 @@
   const videoChannel    = document.getElementById('video-channel');
   const audioCards      = document.getElementById('audio-cards');
 
+  // Player UI References
+  const playerBar          = document.getElementById('player-bar');
+  const playerThumb        = document.getElementById('player-thumb');
+  const playerTrackTitle   = document.getElementById('player-track-title');
+  const playerTrackChannel = document.getElementById('player-track-channel');
+  const playerBtnPlay      = document.getElementById('player-btn-play');
+  const playerBtnLoop      = document.getElementById('player-btn-loop');
+  const playerTimeCurrent  = document.getElementById('player-time-current');
+  const playerTimeTotal    = document.getElementById('player-time-total');
+  const playerProgressTrack = document.getElementById('player-progress-track');
+  const playerProgressFill = document.getElementById('player-progress-fill');
+  const playerProgressThumb = document.getElementById('player-progress-thumb');
+  const iconPlay           = playerBtnPlay.querySelector('.icon-play');
+  const iconPause          = playerBtnPlay.querySelector('.icon-pause');
+
   // Cookies UI
   const cookiesToggle      = document.getElementById('cookies-toggle');
   const cookiesToggleLabel = document.getElementById('cookies-toggle-label');
@@ -35,6 +50,11 @@
   // ── State ────────────────────────────────────────────────
   let currentVideoId    = '';
   let currentVideoTitle = '';
+
+  // Audio Player State
+  const audio              = new Audio();
+  let isLooping            = false;
+  let trackDuration        = 0;
 
   // ── Cookies Management ───────────────────────────────────
   const COOKIES_KEY = 'yt_cookies';
@@ -112,6 +132,14 @@
     urlInput.focus();
     inputHint.textContent = 'Supports youtube.com and youtu.be links';
     inputHint.classList.remove('error');
+
+    // Stop audio playback when returning home
+    audio.pause();
+    audio.src = '';
+    playerBtnPlay.disabled = true;
+    playerBtnLoop.disabled = true;
+    iconPlay.classList.remove('hidden');
+    iconPause.classList.add('hidden');
   }
 
   // ── Format Duration ──────────────────────────────────────
@@ -232,6 +260,9 @@
 
     heroSection.classList.add('hidden');
     showSection(resultsSection);
+
+    // Initialize live audio player
+    initPlayer(data);
   }
 
   // ── Main Fetch Handler ───────────────────────────────────
@@ -270,6 +301,103 @@
       fetchBtn.disabled = false;
     }
   }
+
+  // ── Audio Player Functions ────────────────────────────────
+  function initPlayer(data) {
+    // Reset track progress
+    audio.pause();
+    audio.src = '';
+    playerBtnPlay.disabled = true;
+    playerBtnLoop.disabled = false;
+    playerBtnLoop.classList.toggle('active', isLooping);
+    
+    // Set UI metadata
+    playerThumb.src = data.thumbnail || `https://i.ytimg.com/vi/${currentVideoId}/hqdefault.jpg`;
+    playerThumb.alt = data.title || 'Track thumbnail';
+    playerTrackTitle.textContent = data.title || 'Untitled';
+    playerTrackChannel.textContent = data.channel || '';
+    
+    trackDuration = data.duration || 0;
+    playerTimeCurrent.textContent = '0:00';
+    playerTimeTotal.textContent = formatDuration(trackDuration);
+    playerProgressFill.style.width = '0%';
+    playerProgressThumb.style.left = '0%';
+    
+    // Set audio source (using 128k quality for fast buffering)
+    audio.src = `/api/download?v=${currentVideoId}&quality=128k`;
+    
+    // Enable play button
+    playerBtnPlay.disabled = false;
+    iconPlay.classList.remove('hidden');
+    iconPause.classList.add('hidden');
+  }
+
+  function togglePlay() {
+    if (audio.paused) {
+      audio.play().catch(err => console.error('Playback failed:', err));
+    } else {
+      audio.pause();
+    }
+  }
+
+  audio.addEventListener('play', () => {
+    iconPlay.classList.add('hidden');
+    iconPause.classList.remove('hidden');
+  });
+
+  audio.addEventListener('pause', () => {
+    iconPlay.classList.remove('hidden');
+    iconPause.classList.add('hidden');
+  });
+
+  audio.addEventListener('timeupdate', () => {
+    if (!audio.duration) return;
+    const current = audio.currentTime;
+    const duration = audio.duration;
+    playerTimeCurrent.textContent = formatDuration(current);
+    
+    const pct = (current / duration) * 100;
+    playerProgressFill.style.width = `${pct}%`;
+    playerProgressThumb.style.left = `${pct}%`;
+  });
+
+  audio.addEventListener('ended', () => {
+    if (isLooping) {
+      audio.currentTime = 0;
+      audio.play().catch(err => console.error('Loop playback failed:', err));
+    } else {
+      iconPlay.classList.remove('hidden');
+      iconPause.classList.add('hidden');
+      playerProgressFill.style.width = '0%';
+      playerProgressThumb.style.left = '0%';
+      playerTimeCurrent.textContent = '0:00';
+    }
+  });
+
+  // Toggle loop
+  playerBtnLoop.addEventListener('click', () => {
+    isLooping = !isLooping;
+    playerBtnLoop.classList.toggle('active', isLooping);
+    audio.loop = isLooping;
+  });
+
+  // Handle Play Button click
+  playerBtnPlay.addEventListener('click', togglePlay);
+
+  // Seek bar functionality
+  playerProgressTrack.addEventListener('click', (e) => {
+    if (!audio.src || !trackDuration) return;
+    const rect = playerProgressTrack.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const width = rect.width;
+    const pct = Math.max(0, Math.min(1, clickX / width));
+    
+    audio.currentTime = pct * audio.duration;
+    
+    playerProgressFill.style.width = `${pct * 100}%`;
+    playerProgressThumb.style.left = `${pct * 100}%`;
+    playerTimeCurrent.textContent = formatDuration(audio.currentTime);
+  });
 
   // ── Event Listeners ──────────────────────────────────────
   fetchBtn.addEventListener('click', handleFetch);
