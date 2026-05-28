@@ -4,14 +4,7 @@
    Accepts POST with optional { cookies } in body.
    ============================================================ */
 
-let youtubeModule;
-try {
-  youtubeModule = require('../lib/youtube');
-  console.log('[DEBUG] Required lib/youtube successfully. Keys:', Object.keys(youtubeModule));
-} catch (e) {
-  console.error('[DEBUG] Failed to require lib/youtube:', e.stack);
-}
-const { getVideoInfo } = youtubeModule || {};
+const { getVideoInfo } = require('../lib/youtube');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
