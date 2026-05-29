@@ -1,7 +1,8 @@
 /* ============================================================
    /api/download — Vercel Serverless Function
-   Streams MP3 audio to the client.
+   Transcodes YouTube audio to MP3 and streams directly to client.
    Accepts POST with { videoId, quality, cookies } in body.
+   No temp files — ffmpeg output is piped straight to the response.
    ============================================================ */
 
 const { getDownloadStream } = require('../lib/youtube');
@@ -39,6 +40,7 @@ module.exports = async function handler(req, res) {
   } else {
     videoId = req.query.v;
     quality = req.query.quality || '192k';
+    cookies = req.query.cookies || null;
   }
 
   if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
@@ -48,26 +50,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const options = { type: 'mp3', quality };
-    const { stream, contentType, filename } = await getDownloadStream(videoId, options, cookies);
-
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Transfer-Encoding', 'chunked');
-
-    stream.pipe(res);
-
-    stream.on('error', (err) => {
-      console.error('[/api/download] Stream error:', err.message);
-      if (!res.headersSent) {
-        res.status(500).json({ error: 'Download stream failed' });
-      } else {
-        res.end();
-      }
-    });
-
-    res.on('close', () => {
-      if (stream.destroy) stream.destroy();
-    });
+    await getDownloadStream(videoId, options, cookies, req, res);
   } catch (err) {
     console.error('[/api/download] Error:', err.message);
     if (!res.headersSent) {

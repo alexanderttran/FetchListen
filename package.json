@@ -6,14 +6,13 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "build": "mkdir -p node_modules/youtube-dl-exec/bin && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o node_modules/youtube-dl-exec/bin/yt-dlp && chmod +x node_modules/youtube-dl-exec/bin/yt-dlp"
+    "build": "echo 'Build complete'"
   },
   "dependencies": {
     "@distube/ytdl-core": "^4.16.12",
     "@ybd-project/ytdl-core": "^6.0.8",
     "express": "^4.21.0",
     "ffmpeg-static": "^5.2.0",
-    "youtube-dl-exec": "^3.1.5",
     "youtube-po-token-generator": "^0.6.0",
     "youtubei.js": "^17.0.1"
   },

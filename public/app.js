@@ -23,6 +23,21 @@
   const videoChannel    = document.getElementById('video-channel');
   const audioCards      = document.getElementById('audio-cards');
 
+  // Player UI References
+  const playerBar          = document.getElementById('player-bar');
+  const playerThumb        = document.getElementById('player-thumb');
+  const playerTrackTitle   = document.getElementById('player-track-title');
+  const playerTrackChannel = document.getElementById('player-track-channel');
+  const playerBtnPlay      = document.getElementById('player-btn-play');
+  const playerBtnLoop      = document.getElementById('player-btn-loop');
+  const playerTimeCurrent  = document.getElementById('player-time-current');
+  const playerTimeTotal    = document.getElementById('player-time-total');
+  const playerProgressTrack = document.getElementById('player-progress-track');
+  const playerProgressFill = document.getElementById('player-progress-fill');
+  const playerProgressThumb = document.getElementById('player-progress-thumb');
+  const iconPlay           = playerBtnPlay.querySelector('.icon-play');
+  const iconPause          = playerBtnPlay.querySelector('.icon-pause');
+
   // Cookies UI
   const cookiesToggle      = document.getElementById('cookies-toggle');
   const cookiesToggleLabel = document.getElementById('cookies-toggle-label');
@@ -35,6 +50,11 @@
   // ── State ────────────────────────────────────────────────
   let currentVideoId    = '';
   let currentVideoTitle = '';
+
+  // Audio Player State
+  const audio              = new Audio();
+  let isLooping            = false;
+  let trackDuration        = 0;
 
   // ── Cookies Management ───────────────────────────────────
   const COOKIES_KEY = 'yt_cookies';
@@ -68,12 +88,64 @@
     if (e.target === cookiesModal) closeCookiesModal();
   });
 
+  // Helper to parse Netscape cookie file content and extract only essential YouTube cookies
+  function parseAndMinimizeCookies(cookieInput) {
+    if (!cookieInput) return '';
+    const content = cookieInput.trim();
+    
+    let cookiesMap = {};
+    
+    if (content.startsWith('#') || content.includes('\t')) {
+      const lines = content.split(/\r?\n/);
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        
+        const parts = trimmed.split('\t');
+        if (parts.length >= 7) {
+          const name = parts[5];
+          const value = parts[6];
+          cookiesMap[name] = value;
+        }
+      }
+    } else {
+      // If it's already a semicolon-separated string
+      const pairs = content.split(';');
+      for (const pair of pairs) {
+        const parts = pair.split('=');
+        if (parts.length >= 2) {
+          cookiesMap[parts[0].trim()] = parts.slice(1).join('=').trim();
+        }
+      }
+    }
+    
+    // Keep only essential YouTube cookies
+    const essentialKeys = [
+      'SID', 'HSID', 'SSID', 'APISID', 'SAPISID',
+      '__Secure-3PAPISID', '__Secure-3PSID', '__Secure-3PSIDTS',
+      'LOGIN_INFO', 'PREF', 'VISITOR_INFO1_LIVE'
+    ];
+    
+    const minimized = [];
+    for (const key of essentialKeys) {
+      if (cookiesMap[key]) {
+        minimized.push(`${key}=${cookiesMap[key]}`);
+      }
+    }
+    
+    return minimized.join('; ');
+  }
+
   cookiesSaveBtn.addEventListener('click', () => {
     const val = cookiesTextarea.value.trim();
-    if (val) {
-      localStorage.setItem(COOKIES_KEY, val);
+    const minimized = parseAndMinimizeCookies(val);
+    if (minimized) {
+      localStorage.setItem(COOKIES_KEY, minimized);
+      // Set domain cookie for GET request streaming (prevents URL length overflow)
+      document.cookie = "yt_cookies=" + encodeURIComponent(minimized) + "; path=/; max-age=31536000; SameSite=Lax";
     } else {
       localStorage.removeItem(COOKIES_KEY);
+      document.cookie = "yt_cookies=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     }
     updateCookiesToggle();
     closeCookiesModal();
@@ -82,6 +154,7 @@
   cookiesClearBtn.addEventListener('click', () => {
     cookiesTextarea.value = '';
     localStorage.removeItem(COOKIES_KEY);
+    document.cookie = "yt_cookies=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     updateCookiesToggle();
     closeCookiesModal();
   });
@@ -112,6 +185,14 @@
     urlInput.focus();
     inputHint.textContent = 'Supports youtube.com and youtu.be links';
     inputHint.classList.remove('error');
+
+    // Stop audio playback when returning home
+    audio.pause();
+    audio.src = '';
+    playerBtnPlay.disabled = true;
+    playerBtnLoop.disabled = true;
+    iconPlay.classList.remove('hidden');
+    iconPause.classList.add('hidden');
   }
 
   // ── Format Duration ──────────────────────────────────────
@@ -232,6 +313,9 @@
 
     heroSection.classList.add('hidden');
     showSection(resultsSection);
+
+    // Initialize live audio player
+    initPlayer(data);
   }
 
   // ── Main Fetch Handler ───────────────────────────────────
@@ -270,6 +354,136 @@
       fetchBtn.disabled = false;
     }
   }
+
+  // ── Audio Player Functions ────────────────────────────────
+  function initPlayer(data) {
+    // Reset track progress
+    audio.pause();
+    audio.src = '';
+    playerBtnPlay.disabled = true;
+    playerBtnLoop.disabled = false;
+    playerBtnLoop.classList.toggle('active', isLooping);
+    
+    // Set UI metadata
+    playerThumb.src = data.thumbnail || `https://i.ytimg.com/vi/${currentVideoId}/hqdefault.jpg`;
+    playerThumb.alt = data.title || 'Track thumbnail';
+    playerTrackTitle.textContent = data.title || 'Untitled';
+    playerTrackChannel.textContent = data.channel || '';
+    
+    trackDuration = data.duration || 0;
+    playerTimeCurrent.textContent = '0:00';
+    playerTimeTotal.textContent = formatDuration(trackDuration);
+    playerProgressFill.style.width = '0%';
+    playerProgressThumb.style.left = '0%';
+    
+    // Set audio source using /api/stream (raw MP4, no transcoding, instant start)
+    // Cookies are base64-encoded into the URL so audio.src GET request carries auth
+    const cookies = getCookies();
+    let streamUrl = `/api/stream?v=${currentVideoId}`;
+    if (cookies) {
+      streamUrl += `&c=${btoa(unescape(encodeURIComponent(cookies)))}`;
+    }
+    audio.src = streamUrl;
+    audio.load();
+    
+    // Enable play button
+    playerBtnPlay.disabled = false;
+    iconPlay.classList.remove('hidden');
+    iconPause.classList.add('hidden');
+  }
+
+  function togglePlay() {
+    if (audio.paused) {
+      audio.play().catch(err => console.error('Playback failed:', err));
+    } else {
+      audio.pause();
+    }
+  }
+
+  audio.addEventListener('play', () => {
+    iconPlay.classList.add('hidden');
+    iconPause.classList.remove('hidden');
+  });
+
+  audio.addEventListener('pause', () => {
+    iconPlay.classList.remove('hidden');
+    iconPause.classList.add('hidden');
+  });
+
+  audio.addEventListener('error', (e) => {
+    console.error('Audio error event:', e);
+    const err = audio.error;
+    let errMsg = 'Unknown audio error';
+    if (err) {
+      switch (err.code) {
+        case err.MEDIA_ERR_ABORTED:
+          errMsg = 'Playback aborted by user';
+          break;
+        case err.MEDIA_ERR_NETWORK:
+          errMsg = 'Network error during audio loading';
+          break;
+        case err.MEDIA_ERR_DECODE:
+          errMsg = 'Audio decoding failed (unsupported format/codec)';
+          break;
+        case err.MEDIA_ERR_SRC_NOT_SUPPORTED:
+          errMsg = 'Audio source format not supported';
+          break;
+      }
+      if (err.message) {
+        errMsg += ` (${err.message})`;
+      }
+    }
+    alert(`Audio playback error: ${errMsg}`);
+  });
+
+  audio.addEventListener('timeupdate', () => {
+    if (!audio.duration) return;
+    const current = audio.currentTime;
+    const duration = audio.duration;
+    playerTimeCurrent.textContent = formatDuration(current);
+    
+    const pct = (current / duration) * 100;
+    playerProgressFill.style.width = `${pct}%`;
+    playerProgressThumb.style.left = `${pct}%`;
+  });
+
+  audio.addEventListener('ended', () => {
+    if (isLooping) {
+      audio.currentTime = 0;
+      audio.play().catch(err => console.error('Loop playback failed:', err));
+    } else {
+      iconPlay.classList.remove('hidden');
+      iconPause.classList.add('hidden');
+      playerProgressFill.style.width = '0%';
+      playerProgressThumb.style.left = '0%';
+      playerTimeCurrent.textContent = '0:00';
+    }
+  });
+
+  // Toggle loop
+  playerBtnLoop.addEventListener('click', () => {
+    isLooping = !isLooping;
+    playerBtnLoop.classList.toggle('active', isLooping);
+    audio.loop = isLooping;
+  });
+
+  // Handle Play Button click
+  playerBtnPlay.addEventListener('click', togglePlay);
+
+  // Seek bar functionality
+  playerProgressTrack.addEventListener('click', (e) => {
+    if (!audio.src || !trackDuration) return;
+    const rect = playerProgressTrack.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const width = rect.width;
+    const pct = Math.max(0, Math.min(1, clickX / width));
+    
+    audio.currentTime = pct * audio.duration;
+    
+    playerProgressFill.style.width = `${pct * 100}%`;
+    playerProgressThumb.style.left = `${pct * 100}%`;
+    playerTimeCurrent.textContent = formatDuration(audio.currentTime);
+  });
 
   // ── Event Listeners ──────────────────────────────────────
   fetchBtn.addEventListener('click', handleFetch);
